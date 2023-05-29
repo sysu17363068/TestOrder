@@ -19,3 +19,4 @@ lecarb.egg-info
 poetry.lock
 quicksel/
 myresult/
+Z_train_runner/
