@@ -2,7 +2,7 @@
 import time
 import copy
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -15,9 +15,9 @@ from . import made
 from . import transformer
 from ..estimator import Estimator, OPS
 from ..utils import report_model, run_test, evaluate
-from ...constants import DEVICE, MODEL_ROOT, NUM_THREADS, VALID_NUM_DATA_DRIVEN
+from ...constants import DEVICE, MODEL_ROOT, NUM_THREADS, VALID_NUM_DATA_DRIVEN, CHANGE_ORDER_TABLE
 from ...dataset.dataset import load_table
-from ...workload.workload import load_queryset, load_labels, query_2_triple
+from ...workload.workload import load_queryset, load_labels, query_2_triple, new_order_QueryList
 
 L = logging.getLogger(__name__)
 
@@ -273,29 +273,64 @@ def InitWeight(m):
     if type(m) == nn.Embedding:
         nn.init.normal_(m.weight, std=0.02)
 
-def train_naru(seed, dataset, version, workload, params, sizelimit):
+def print_order(order: List[int])->str:
+    s = "["
+    # print('[',end='')
+    if (len(order))==0:
+        L.warning("The Order List is empty which has error!")
+        return
+    for o in order[:-1]:
+        # print(o,end=",")
+        s += str(o)+","
+    # print(order[-1],end="]\n")
+    s += str(order[-1])+"]"
+    return s
+
+def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict, GPU_id=0):
     # uniform thread number
+    # import os 
+    # os.environ['CUDA_VISIBLE_DEVICES'] = GPU_id
+    # torch.cuda.set_device("1")
+    L.info(f"the seed is {seed}")
+
     torch.set_num_threads(NUM_THREADS)
     L.info(f"torch threads: {torch.get_num_threads()}")
     assert NUM_THREADS == torch.get_num_threads(), torch.get_num_threads()
 
     torch.manual_seed(seed)
     np.random.seed(seed)
-
+    L.info(f"params: {params}")
+    args = Args(**params)
+    L.info(f"the order is {args.order}")
+    
     table = load_table(dataset, version)
 
     # load validation queries and labels
-    valid_queries = load_queryset(dataset, workload)['valid'][:VALID_NUM_DATA_DRIVEN]
-    labels = load_labels(dataset, version, workload)['valid'][:VALID_NUM_DATA_DRIVEN]
+    valid_queries = load_queryset(dataset, workload)['valid'][:]
+    labels = load_labels(dataset, version, workload)['valid'][:]
+
+
 
     # convert parameter dict to original naru code format
-    L.info(f"params: {params}")
-    args = Args(**params)
+
 
     fixed_ordering = None
     if args.order is not None:
         L.info(f"Using passed-in order: {args.order}")
         fixed_ordering = args.order
+        output_order = args.order
+    order_name = ','.join(map(str,args.order))
+    
+
+            # change order 
+    if CHANGE_ORDER_TABLE:
+        L.warning("<<<<<<<<<< use the data order >>>>>>>>>>>")
+        table.change_table_order(fixed_ordering)
+        valid_queries = new_order_QueryList(valid_queries,new_order=fixed_ordering)
+        fixed_ordering = None
+        args.order = None
+        
+        
 
     if args.heads > 0:
         model = MakeTransformer(args,
@@ -312,11 +347,11 @@ def train_naru(seed, dataset, version, workload, params, sizelimit):
 
     mb = report_model(model)
     if sizelimit > 0 and mb > (sizelimit * table.data_size_mb):
-        L.info(f"Exceeds size limit {mb:.2f}MB > {sizelimit} x {table.data_size_mb}, do not conintue training!")
+        # L.info(f"Exceeds size limit {mb:.2f}MB > {sizelimit} x {table.data_size_mb}, do not conintue training!")
         return
 
     if not isinstance(model, transformer.Transformer):
-        L.info('Applying InitWeight()')
+        # L.info('Applying InitWeight()')
         model.apply(InitWeight)
 
     if isinstance(model, transformer.Transformer):
@@ -329,11 +364,11 @@ def train_naru(seed, dataset, version, workload, params, sizelimit):
     else:
         opt = torch.optim.Adam(list(model.parameters()), 2e-4)
 
-    L.info(f"start building naru dataset for table {table.name}...")
+    # L.info(f"start building naru dataset for table {table.name}...")
     train_data = NaruTableDataset(table)
-    L.info("dataset build finished")
+    # L.info("dataset build finished")
 
-    L.info('calculate table entropy...')
+    # L.info('calculate table entropy...')
     df = pd.DataFrame(data=train_data.tuples_np)
     table_bits = Entropy(
         table.name,
@@ -354,12 +389,13 @@ def train_naru(seed, dataset, version, workload, params, sizelimit):
             table_bits=table_bits)
 
         dur_min = (time.time() - train_start) / 60
-        L.info(f'epoch {epoch+1} train loss {mean_epoch_train_loss:.4f} nats / {mean_epoch_train_loss/np.log(2):.4f} bits, time since start: {dur_min:.1f} mins')
+        if epoch%20 == 0:
+            L.info(f'epoch {epoch+1} train loss {mean_epoch_train_loss:.4f} nats / {mean_epoch_train_loss/np.log(2):.4f} bits, time since start: {dur_min:.1f} mins')
 
     dur_min = (time.time() - train_start) / 60
     L.info('Training finished! Time spent since start: {:.1f} mins'.format(dur_min))
 
-    L.info('Evaluating likelihood on full data...')
+    # L.info('Evaluating likelihood on full data...')
     all_losses = RunEpoch(
         args,
         'test',
@@ -375,7 +411,7 @@ def train_naru(seed, dataset, version, workload, params, sizelimit):
     model_bits = model_nats / np.log(2)
     model.model_bits = model_bits
 
-    L.info(f"Evaluating on valid set with {VALID_NUM_DATA_DRIVEN} queries...")
+    L.info(f"Evaluating on valid set with {len(valid_queries)} all valid queries for train Naru...")
     estimator = Naru(model,
                      'valid',
                      table,
@@ -403,12 +439,20 @@ def train_naru(seed, dataset, version, workload, params, sizelimit):
         'model_bits': model_bits,
         'valid_error': {workload: metrics}
     }
-
-    model_path = MODEL_ROOT / table.dataset
-    model_path.mkdir(parents=True, exist_ok=True)
-    model_file = model_path / f"{table.version}-{model.name()}_warm{args.warmups}-{seed}.pt"
-    torch.save(state, model_file)
-    L.info(f'model saved to:{model_file}')
+    # if result_dict == "seed":
+    #     result_dict[seed] = metrics
+    # elif result_dict == "order":
+    #     key = order_name
+    #     result_dict[key] = metrics
+    L.info(f"{metrics}")
+    infomation_dict = {"seed":seed,"order":order_name,"error":{workload: metrics},
+                       "model_name":f"{table.version}-{model.name()}_warm{args.warmups}-{seed}"}
+    return infomation_dict
+    # model_path = MODEL_ROOT / table.dataset
+    # model_path.mkdir(parents=True, exist_ok=True)
+    # model_file = model_path / f"{table.version}-{model.name()}_warm{args.warmups}-{seed}.pt"
+    # torch.save(state, model_file)
+    # L.info(f'model saved to:{model_file}')
 
 class Naru(Estimator):
     """Progressive sampling from Naru."""

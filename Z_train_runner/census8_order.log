@@ -1,0 +1,31 @@
+poetry run python -m lecarb train -s 123 -d census8 -v original -w test_order -enaru --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 8, 'layers': 4, 'fc_hiddens': 21, 'residual': True, 'warmups': 2000, 'order': [4,0,7,5,6,2,1,3]}"
+'order':[0,1,2,3,4,5,6,7]
+{'max': 249.0, '99th': 6.0, '95th': 2.5, '90th': 2.0, 'median': 1.0517015706806283, 'mean': 1.5419960841632692, 'gmean': 1.2463725231107639}
+{'max': 7.0, '99th': 3.0, '95th': 2.0, '90th': 1.5, 'median': 1.0394431554524362, 'mean': 1.194654312261869, 'gmean': 1.148117966125827}
+'order':[4,0,7,5,6,2,1,3]
+{'max': 94.0, '99th': 9.741379310344827, '95th': 3.757142857142857, '90th': 2.1342756183745584, 'median': 1.1188416192226656, 'mean': 1.636246576381369, 'gmean': 1.3249834072749045}
+{'max': 6.0, '99th': 4.337999999999996, '95th': 2.6100880560373834, '90th': 2.0, 'median': 1.1333333333333333, 'mean': 1.3518165122652348, 'gmean': 1.2707824675569437}
+3,1,2,6,7,4,0,5
+{'max': 83.0, '99th': 7.014999999999986, '95th': 2.3333333333333335, '90th': 2.0, 'median': 1.1666666666666667, 'mean': 1.5359902731002604, 'gmean': 1.317320304936195}
+{'max': 19.0, '99th': 3.0, '95th': 1.7917832522303325, '90th': 1.5, 'median': 1.1291759465478841, 'mean': 1.253383379718459, 'gmean': 1.2082671935940876}
+
+
+poetry run python -m lecarb train -s 123 -d census13 -v original -w wtest_order -enaru --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 8, 'layers': 4, 'fc_hiddens': 16, 'residual': True, 'warmups': 2000}"
+{'max': 13.0, '99th': 4.0, '95th': 2.261681508643268, '90th': 1.8583850931677037, 'median': 1.0659448818897639, 'mean': 1.288315424623636, 'gmean': 1.2153267484340922}
+
+poetry run python -m lecarb test -s 123 -d census13 -v original -w basenormal -enaru --params \
+    "{'psample':2000, 'model':'original-resmade_hid16,16,16,16_emb8_ep100_embedInembedOut_warm2000-123'}"
+{'max': 86.0, '99th': 4.0, '95th': 2.6178967813540472, '90th': 2.0, 'median': 1.0956287083906004, 'mean': 1.3690389117149953, 'gmean': 1.266882516784039}
+~~~~~~~~~~~~~~~~~~~~~
+poetry run python -m lecarb train -s 123 -d census13 -v original -w test_order -enaru --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 8, 'layers': 4, 'fc_hiddens': 16, 'residual': True, 'order':[6,0,10,5,7,11,9,2,8,3,12,4,1],'warmups': 2000}"
+{'max': 27.0, '99th': 5.0, '95th': 3.0, '90th': 2.0, 'median': 1.0911932991210995, 'mean': 1.3627796273848216, 'gmean': 1.2540198589095557}
+
+poetry run python -m lecarb test -s 123 -d census13 -v original -w basenormal -enaru --params \
+    "{'psample':2000, 'model':'resmade_hid16,16,16,16_emb8_ep100_embedInembedOut_order6,0,10,5,7,11,9,2,8,3,12,4,1_warm0-123'}"
+{'max': 141.0, '99th': 9.0, '95th': 4.5, '90th': 3.05837084148728, 'median': 1.1646173831606297, 'mean': 1.7895387387423365, 'gmean': 1.4695003252710683}

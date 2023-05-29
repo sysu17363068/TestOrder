@@ -1,0 +1,97 @@
+poetry run python -m lecarb train -s 123 -d census13 -v original -w test_order -eolive --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 8, 'layers': 4, 'fc_hiddens': 16, 'residual': True, 'warmups': 0}"
+
+poetry run python -m lecarb test -s 123 -d census13 -v original -w test_order -eolive --params \
+    "{'psample':2000, 'model':'olive_resmade_hid16,16,16,16_emb8_ep100_embedInembedOut_warm0-123'}"
+
+poetry run python -m lecarb test -s 123 -d census13 -v original -w test_order -eolive --params \
+    "{'psample':2000, 'model':'resmade_hid32,32,32,32_emb4_ep100_embedInembedOut_warm0-123'}"
+
+验证一下 []
+
+
+
+
+
+poetry run python -m lecarb train -s 123 -d power7 -v original -w data_normal -enaru --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 16, 'layers': 5, 'fc_hiddens': 128, 'residual': True, 'warmups': 4000, 'order': [2,4,0,5,1,6,3]}"
+
+poetry run python -m lecarb test -s 123 -d power7 -v original -w data_normal -enaru --params \
+    "{'psample':2000, 'model':'resmade_hid128,128,128,128,128_emb16_ep100_embedInembedOut_order2,4,0,5,1,6,3_warm4000-123'}"
+
+---------------naru - 64  - census - natural order
+poetry run python -m lecarb train -s 123 -d census13 -v original -w test_order -enaru --params \
+"{'epochs': 1500 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 8, 'layers': 4, 'fc_hiddens': 16, 'residual': True, 'warmups': 2000}"
+
+poetry run python -m lecarb test -s 123 -d census13 -v original -w test_order -enaru --params \
+    "{'psample':2000, 'model':'resmade_hid64,64,64,64_emb8_ep100_embedInembedOut_warm2000-123'}"
+----------------
+
+poetry run python -m lecarb train -s 123 -d power7 -v original -w data_normal -eolive --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 16, 'layers': 5, 'fc_hiddens': 128, 'residual': True, 'warmups': 4000, 'order': [2,4,0,5,1,6,3]}"
+
+poetry run python -m lecarb test -s 123 -d power7 -v original -w data_normal -eolive --params \
+    "{'psample':2000, 'model':'olive_resmade_hid128,128,128,128,128_emb16_ep100_embedInembedOut_order2,4,0,5,1,6,3_warm4000-123'}"
+
+
+flights_5m —————— 
+poetry run python -m lecarb train -s 123 -d flights_5m -v original -w data_two_point -eolive --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 64, 'layers': 4, 'fc_hiddens': 256, 'residual': True, 'warmups': 4000, 'order': [8,11,1,10,0,4,7,2,3,9,5,6]}"
+
+poetry run python -m lecarb test -s 123 -d flights_5m -v original -w data_two_point -eolive --params \
+    "{'psample':4000, 'model':'olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123'}"
+ the workload is data_two_point
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: Test
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: {'max': 318.0, '99th': 3.0, '95th': 1.8497835497835466, '90th': 1.3333333333333333, 'median': 1.0071387074864944, 'mean': 1.2692610638578075, 'gmean': 1.1160353107185355}
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: The column error statistic avg\count\sum
+{'CARRIER': 8009.2581677888875, 'DEST_STATE_ABR': 6048.061661080273, 'ORIGIN_STATE_ABR': 5427.032637835667, 'DEST': 5111.518173388217, 'ORIGIN': 4008.641776479619, 'TAXI_OUT': 3347.537697052776, 'YEAR_DATE': 2269.812031993445, 'DISTANCE': 1234.7214845792134, 'AIR_TIME': 897.6729846970679, 'DEP_DELAY': 604.125, 'ARR_DELAY': 255.45667223681068, 'TAXI_IN': 0}
+ {'ORIGIN': 68, 'DEST_STATE_ABR': 54, 'DEST': 53, 'ORIGIN_STATE_ABR': 38, 'CARRIER': 26, 'YEAR_DATE': 17, 'AIR_TIME': 12, 'DISTANCE': 9, 'DEP_DELAY': 4, 'TAXI_OUT': 2, 'ARR_DELAY': 2, 'TAXI_IN': 0}
+ {'DEST_STATE_ABR': 326595.32969833474, 'ORIGIN': 272587.6408006141, 'DEST': 270910.46318957553, 'CARRIER': 208240.71236251108, 'ORIGIN_STATE_ABR': 206227.24023775532, 'YEAR_DATE': 38586.80454388857, 'DISTANCE': 11112.49336121292, 'AIR_TIME': 10772.075816364815, 'TAXI_OUT': 6695.075394105552, 'DEP_DELAY': 2416.5, 'ARR_DELAY': 510.91334447362135, 'TAXI_IN': 0}
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: the 30\% \is 23006
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: the 60\% \is 11589
+[2023-05-22 09:20:03,364 INFO] lecarb.estimator.utils: the 90\% \is 11589
+
+poetry run python -m lecarb test -s 123 -d flights_5m -v original -w count_result_queries -eolive --params \
+    "{'psample':4000, 'model':'olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123'}"
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: Test
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: {'max': 47.5, '99th': 4.501666666666665, '95th': 2.2096185737976777, '90th': 1.7857142857142858, 'median': 1.1030904191622524, 'mean': 1.3808732318955284, 'gmean': 1.243125723575236}
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: The column error statistic avg\count\sum
+The message write in LOG ./myresult/olive/flights_5m/olive-model=olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123;psample=4000/count_result_queries/info.txt: {'ARR_DELAY': 2778.997135520956, 'ORIGIN': 2668.226244029871, 'DEP_DELAY': 1813.1640428910678, 'AIR_TIME': 894.7107366805998, 'TAXI_OUT': 875.9439648128294, 'DEST': 599.8123748079197, 'YEAR_DATE': 347.1692502729602, 'DISTANCE': 296.56880024575247, 'TAXI_IN': 145.0, 'CARRIER': 0, 'ORIGIN_STATE_ABR': 0, 'DEST_STATE_ABR': 0}
+The message write in LOG ./myresult/olive/flights_5m/olive-model=olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123;psample=4000/count_result_queries/info.txt: {'ORIGIN': 27, 'DEST': 25, 'DEP_DELAY': 16, 'AIR_TIME': 15, 'TAXI_OUT': 12, 'DISTANCE': 10, 'YEAR_DATE': 9, 'ARR_DELAY': 9, 'TAXI_IN': 1, 'CARRIER': 0, 'ORIGIN_STATE_ABR': 0, 'DEST_STATE_ABR': 0}
+The message write in LOG ./myresult/olive/flights_5m/olive-model=olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123;psample=4000/count_result_queries/info.txt: {'ORIGIN': 72042.10858880651, 'DEP_DELAY': 29010.624686257084, 'ARR_DELAY': 25010.974219688604, 'DEST': 14995.309370197992, 'AIR_TIME': 13420.661050208997, 'TAXI_OUT': 10511.327577753953, 'YEAR_DATE': 3124.523252456642, 'DISTANCE': 2965.688002457525, 'TAXI_IN': 145.0, 'CARRIER': 0, 'ORIGIN_STATE_ABR': 0, 'DEST_STATE_ABR': 0}
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: the 30\% \is 19658
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: the 60\% \is 541
+[2023-05-22 09:22:51,650 INFO] lecarb.estimator.utils: the 90\% \is 240
+
+——————————
+新的flight实验
+poetry run python -m lecarb train -s 123 -d flights_5m -v original -w data_two_point -enaru --params \
+"{'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 64, 'layers': 4, 'fc_hiddens': 256, 'residual': True, 'warmups': 4000, 'order': [11,8,10,1,4,0,2,7,9,3,6,5]}"
+
+poetry run python -m lecarb test -s 123 -d flights_5m -v original -w count_result_queries -enaru --params \
+    "{'psample':4000, 'model':'resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order11,8,10,1,4,0,2,7,9,3,6,5_warm4000-123'}"
+[2023-05-25 12:24:18,237 INFO] lecarb.estimator.utils: the workload is count_result_queries
+[2023-05-25 12:24:18,238 INFO] lecarb.estimator.utils: Test
+[2023-05-25 12:24:18,238 INFO] lecarb.estimator.utils: {'max': 50.0, '99th': 4.735999999999998, '95th': 2.337820512820509, '90th': 1.82577873254565, 'median': 1.091655627667758, 'mean': 1.4049206031870312, 'gmean': 1.2386875535904542}
+
+
+poetry run python -m lecarb train -s 123 -d flights_5m -v original -w data_two_point -eolive --params \
+"{'epochs': 120 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+    'embed_size': 64, 'layers': 4, 'fc_hiddens': 256, 'residual': True, 'warmups': 4000, 'order': [11,8,10,1,4,0,2,7,9,3,6,5]}"
+
+poetry run python -m lecarb test -s 123 -d flights_5m -v original -w count_result_queries -eolive --params \
+    "{'psample':4000, 'model':'olive_resmade_hid256,256,256,256_emb64_ep120_embedInembedOut_order11,8,10,1,4,0,2,7,9,3,6,5_warm4000-123-[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [11]]'}"
+[2023-05-25 19:46:46,928 INFO] lecarb.estimator.utils: Test
+[2023-05-25 19:46:46,928 INFO] lecarb.estimator.utils: {'max': 34.5, '99th': 6.575714285714281, '95th': 2.5, '90th': 1.9869565217391307, 'median': 1.08152676957253, 'mean': 1.426155937200535, 'gmean': 1.256255013143875}
+
+
+临时用的olive_resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,11,1,10,0,4,7,2,3,9,5,6_warm4000-123
+
+poetry run python -m lecarb test -s 123 -d flights_5m -v original -w data_two_point -enaru --params \
+    "{'psample':4000, 'model':'resmade_hid256,256,256,256_emb64_ep100_embedInembedOut_order8,0,4,5,11,3,1,2,9,10,7,6_warm4000-123'}"

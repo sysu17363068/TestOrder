@@ -3,7 +3,7 @@ from collections import OrderedDict
 from typing import Dict, NamedTuple, Optional, Tuple, List, Any
 import pickle
 import numpy as np
-
+import copy
 from ..dtypes import is_categorical
 from ..constants import DATA_ROOT, PKL_PROTO
 from ..dataset.dataset import Table, load_table
@@ -12,6 +12,25 @@ class Query(NamedTuple):
     """predicate of each attritbute are conjunctive"""
     predicates: Dict[str, Optional[Tuple[str, Any]]]
     ncols: int
+
+    def change_Query_order(self,new_order):
+        sorted_predicates_dict = copy.deepcopy(self.predicates)
+        sorted_predicates_dict.clear()
+        # 遍历新顺序，将原始字典中的键值对按新顺序添加到空字典中
+        for i, key in enumerate(new_order):
+            original_key = list(self.predicates.keys())[key]
+            sorted_predicates_dict[original_key] = self.predicates[original_key]
+        return sorted_predicates_dict,self.ncols
+
+def new_order_query2Query(sorted_predicates_dict, ncols) -> Query:
+    return Query(predicates=sorted_predicates_dict,
+                 ncols=ncols)
+
+def new_order_QueryList(query_list:List[Query],new_order)->List[Query]:
+    for i,query in enumerate(query_list):
+        q,ncol = query.change_Query_order(new_order)
+        query_list[i] = new_order_query2Query(q,ncol)
+    return query_list
 
 class Label(NamedTuple):
     cardinality: int

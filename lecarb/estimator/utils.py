@@ -23,7 +23,7 @@ def report_model(model, blacklist=None):
     num_params = sum(ps)
     mb = num_params * 4 / 1024 / 1024
     L.info(f'Number of model parameters: {num_params} (~= {mb:.2f}MB)')
-    L.info(model)
+    # L.info(model)
     return mb
 
 def qerror(est_card, card):
@@ -47,18 +47,18 @@ def evaluate(preds, labels, total_rows=-1):
         errors.append(qerror(float(preds[i]), float(labels[i])))
 
     metrics = {
-        'max': np.max(errors),
-        '99th': np.percentile(errors, 99),
-        '95th': np.percentile(errors, 95),
-        '90th': np.percentile(errors, 90),
-        'median': np.median(errors),
-        'mean': np.mean(errors),
-        'gmean': gmean(errors)
+        'max': round(np.max(errors),4),
+        '99th': round(np.percentile(errors, 99),4),
+        '95th': round(np.percentile(errors, 95),4),
+        '90th': round(np.percentile(errors, 90),4),
+        'median': round(np.median(errors),4),
+        'mean': round(np.mean(errors),4),
+        'gmean': round(gmean(errors),4)
     }
 
     if total_rows > 0:
         metrics['rms'] = rmserror(preds, labels, total_rows)
-    L.info(f"{metrics}")
+    
     return np.array(errors), metrics
 
 def evaluate_errors(errors):

@@ -102,7 +102,20 @@ class Table(object):
         for i, col in enumerate(self.columns.values()):
             minmax_dict[i] = (col.minval, col.maxval)
         return minmax_dict
-
+    
+    def change_table_order(self,new_order):
+        if new_order==None:
+            return 
+        # 遍历新顺序，将原始字典中的键值对按新顺序添加到空字典中
+        order_list = []
+        for i, key in enumerate(new_order):
+            original_key = self.data.keys()[key]# 获取序号 对应的列名
+            order_list.append(original_key) # 排序后的list 增加列名
+        self.data =  self.data[order_list]
+        self.parse_columns()
+        L.info(f"ReOrder build finished: {self}")
+        return
+    
     def normalize(self, scale=1):
         data = copy.deepcopy(self.data)
         for cname, col in self.columns.items():
@@ -172,14 +185,14 @@ def load_table(dataset: str, version: str, overwrite: bool=False) -> Table:
     table_path = DATA_ROOT / dataset / f"{version}.table.pkl"
 
     if not overwrite and table_path.is_file():
-        L.info("table exists, load...")
+        # L.info("table exists, load...")
         with open(table_path, 'rb') as f:
             table = pickle.load(f)
-        L.info(f"load finished: {table}")
+        # L.info(f"load finished: {table}")
         return table
 
     table = Table(dataset, version)
-    L.info("dump table to disk...")
+    # L.info("dump table to disk...")
     dump_table(table)
     return table
 

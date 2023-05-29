@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 import torch
+from dotenv import find_dotenv, load_dotenv
 
+load_dotenv(find_dotenv('.env'))
 DATA_ROOT = Path(os.environ["DATA_ROOT"])
 OUTPUT_ROOT = Path(os.environ["OUTPUT_ROOT"])
 MODEL_ROOT = OUTPUT_ROOT / "model"
@@ -22,3 +24,4 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 NUM_THREADS = int(os.environ.get("CPU_NUM_THREADS", os.cpu_count()))
 
 VALID_NUM_DATA_DRIVEN = 100
+CHANGE_ORDER_TABLE = False

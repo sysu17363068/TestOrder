@@ -1,24 +1,14 @@
 """Le Carb - LEarned CARdinality estimator Benchmark
 
 Usage:
-  lecarb workload gen [-s <seed>] [-d <dataset>] [-v <version>] [-w <workload>] [--params <params>] [--no-label] [-o <old_version>] [-r <ratio>]
-  lecarb workload label [-d <dataset>] [-v <version>] [-w <workload>]
-  lecarb workload update-label [-s <seed>] [-d <dataset>] [-v <version>] [-w <workload>] [--sample-ratio <sample_size>]
-  lecarb workload merge [-d <dataset>] [-v <version>] [-w <workload>]
-  lecarb workload dump [-d <dataset>] [-v <version>] [-w <workload>]
-  lecarb workload quicksel [-d <dataset>] [-v <version>] [-w <workload>] [--params <params>] [--overwrite]
-  lecarb dataset table [-d <dataset>] [-v <version>] [--overwrite]
-  lecarb dataset gen [-s <seed>] [-d <dataset>] [-v <version>] [--params <params>] [--overwrite]
-  lecarb dataset update [-s <seed>] [-d <dataset>] [-v <version>] [--params <params>] [--overwrite]
-  lecarb dataset dump [-s <seed>] [-d <dataset>] [-v <version>]
-  lecarb train [-s <seed>] [-d <dataset>] [-v <version>] [-w <workload>] [-e <estimator>] [--params <params>] [--sizelimit <sizelimit>]
-  lecarb test [-s <seed>] [-d <dataset>] [-v <version>] [-w <workload>] [-e <estimator>] [--params <params>] [--overwrite]
-  lecarb report [-d <dataset>] [--params <params>]
-  lecarb report-dynamic [-d <dataset>] [--params <params>]
-  lecarb update-train [-s <seed>] [-d <dataset>] [-v <version>] [-w <workload>] [-e <estimator>] [--params <params>] [--overwrite]
+  lecarb train_seed [-s <seed>] [-d <dataset>] [-w <workload>]
+  lecarb train_order [-s <seed>] [-d <dataset>] [-w <workload>] [-f <final_col>]
+  lecarb analyze [-d <dataset>] [-w <workload>] [-t <type>] 
 
 Options:
   -s, --seed <seed>                Random seed.
+  -t, --type <type>                Analyze type.
+  -f, --final_col <final_col>      Final_col.
   -d, --dataset <dataset>          The input dataset [default: census13].
   -v, --dataset-version <version>  Dataset version [default: original].
   -w, --workload <workload>        Name of the workload [default: base].
@@ -34,9 +24,12 @@ Options:
 """
 from ast import literal_eval
 from time import time
-
+import json
 from docopt import docopt
-
+import os
+import itertools
+import logging
+L = logging.getLogger(__name__)
 from .workload.gen_workload import generate_workload
 from .workload.gen_label import generate_labels, update_labels
 from .workload.merge_workload import merge_workload
@@ -57,172 +50,119 @@ from .estimator.lw.lw_nn import train_lw_nn, test_lw_nn
 from .estimator.lw.lw_tree import train_lw_tree, test_lw_tree
 from .estimator.deepdb.deepdb import train_deepdb, test_deepdb, update_deepdb
 from .workload.workload import dump_sqls
-
+import os 
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 if __name__ == "__main__":
     args = docopt(__doc__, version="Le Carb 0.1")
 
-    seed = args["--seed"]
-    if seed is None:
-        seed = int(time())
-    else:
-        seed = int(seed)
-
-    if args["workload"]:
-        if args["gen"]:
-            generate_workload(
-                seed,
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                name=args["--workload"],
-                no_label = args["--no-label"],
-                old_version=args["--old-version"],
-                win_ratio=args["--win-ratio"],
-                params = literal_eval(args["--params"])
-            )
-        elif args["label"]:
-            generate_labels(
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                workload=args["--workload"]
-            )
-        elif args["update-label"]:
-            update_labels(
-                seed,
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                workload=args["--workload"],
-                sampling_ratio=literal_eval(args["--sample-ratio"])
-            )
-        elif args["merge"]:
-            merge_workload(
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                workload=args["--workload"]
-            )
-        elif args["quicksel"]:
-            dump_quicksel_query_files(
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                workload=args["--workload"],
-                overwrite=args["--overwrite"]
-            )
-            generate_quicksel_permanent_assertions(
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                params=literal_eval(args["--params"]),
-                overwrite=args["--overwrite"]
-            )
-        elif args["dump"]:
-            dump_sqls(
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                workload=args["--workload"])
-        else:
-            raise NotImplementedError
-        exit(0)
-
-    if args["dataset"]:
-        if args["table"]:
-            load_table(args["--dataset"], args["--dataset-version"], overwrite=args["--overwrite"])
-        elif args["gen"]:
-            generate_dataset(
-                seed,
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                params=literal_eval(args["--params"]),
-                overwrite=args["--overwrite"]
-            )
-        elif args["update"]:
-            gen_appended_dataset(
-                seed,
-                dataset=args["--dataset"],
-                version=args["--dataset-version"],
-                params=literal_eval(args["--params"]),
-                overwrite=args["--overwrite"]
-            )
-        elif args["dump"]:
-            dump_table_to_num(args["--dataset"], args["--dataset-version"])
-        else:
-            raise NotImplementedError
-        exit(0)
-
-    if args["train"]:
+    # print("helloe")
+    if args["train_seed"]:
         dataset = args["--dataset"]
-        version = args["--dataset-version"]
         workload = args["--workload"]
-        params = literal_eval(args["--params"])
-        sizelimit = float(args["--sizelimit"])
+        # params = literal_eval(args["--params"])
+        params = {'epochs': 100 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+        'embed_size': 8, 'layers': 4, 'fc_hiddens': 21, 'residual': True, 'warmups': 0,"order":[0,1,2,3,4,5,6,7]}
+        sizelimit = 0.15
+        all_time = 0
+        result_dict = {}
+        mean_error_list = []
+        th95_error_list = []
 
-        if args["--estimator"] == "naru":
-            train_naru(seed, dataset, version, workload, params, sizelimit)
-        elif args["--estimator"] == "mscn":
-            train_mscn(seed, dataset, version, workload, params, sizelimit)
-        elif args["--estimator"] == "deepdb":
-            train_deepdb(seed, dataset, version ,workload, params, sizelimit)
-        elif args["--estimator"] == "lw_nn":
-            train_lw_nn(seed, dataset, version ,workload, params, sizelimit)
-        elif args["--estimator"] == "lw_tree":
-            train_lw_tree(seed, dataset, version ,workload, params, sizelimit)
-        else:
-            raise NotImplementedError
-        exit(0)
+        for seed in range(0,100):
+            start_time = time()
+            result_dict = train_naru(seed, dataset, 'original', workload, params, sizelimit, result_dict=result_dict, GPU_id= 1)
+                # infomation_dict = {"seed":seed,"order":order_name,"error":{workload: metrics},
+                    #    "model_name":f"{table.version}-{model.name()}_warm{args.warmups}-{seed}"}
+            mean_error_list.append(result_dict["error"][workload]['mean'])
+            th95_error_list.append(result_dict["error"][workload]['95th'])
+            if os.path.isdir(f"myresult/{dataset}/{workload}")== False:
+                os.makedirs(f"myresult/{dataset}/{workload}")
+            with open(f"myresult/{dataset}/{workload}/my_dict.json", "a+") as f:
+                json.dump(result_dict, f)
+                f.write('\n')
+            end_time = time()
+            use_time = (end_time - start_time)/60
+            all_time += use_time
+            L.info(f"the train use {use_time} min")
+            L.info(f"the all time {all_time} min")
 
-    if args["test"]:
+        
+    elif args["train_order"]:
+        # print("______________")
         dataset = args["--dataset"]
-        version = args["--dataset-version"]
         workload = args["--workload"]
-        params = literal_eval(args["--params"])
-        overwrite = args["--overwrite"]
+        # final_col = args["--final_col"]
+        final_col_list = literal_eval(args["--final_col"])
+        print()
 
-        if args["--estimator"] == "sample":
-            test_sample(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "postgres":
-            test_postgres(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "mysql":
-            test_mysql(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "mhist":
-            test_mhist(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "bayesnet":
-            test_bayesnet(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "kde":
-            test_kde(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "naru":
-            test_naru(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "mscn":
-            test_mscn(dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "deepdb":
-            test_deepdb(dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "lw_nn":
-            test_lw_nn(dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "lw_tree":
-            test_lw_tree(dataset, version, workload, params, overwrite)
-        else:
-            raise NotImplementedError
-        exit(0)
+        # print(type(final_col))
+        # exit(0)
+        params = {'epochs': 80 , 'input_encoding': 'embed', 'output_encoding': 'embed', \
+        'embed_size': 8, 'layers': 4, 'fc_hiddens': 18, 'residual': True, 'warmups': 0}
+        sizelimit = 0.15
+        all_time = 0
+        result_dict = {}
+        mean_error_list = []
+        th95_error_list = []
+        seed = 123
+        val = int(dataset[-1])
+        print(val)
+        ori_order = list(range(val))
+        final_col = 0
+        # ori_order.remove(first_col)
+# poetry run python -m lecarb train_order --dataset census8 --workload basenormal --final_col "[6,7]"
+        for final_col in final_col_list:
+            ori_order = list(range(val))
+            ori_order.remove(final_col)
+            i = -1
+            length = 0
+            if os.path.exists(f"myresult/{dataset}/{workload}/my_dict_train_order_{final_col}.json"):
+                with open(f"myresult/{dataset}/{workload}/my_dict_train_order_{final_col}.json", "r") as f:
+                    result_dict_list = f.readlines()
+                    length = len(result_dict_list)
+                    f.close()
+            print("the lenght is:",length)
 
-    if args["report"]:
+            for perm in itertools.permutations(ori_order, len(ori_order)):
+                i += 1
+                if i < length:
+                    continue
+
+                now_order = list(perm)+[final_col]
+                print(now_order)
+                params["order"] = now_order
+                start_time = time()
+                result_dict.update({"id":i})
+                result_dict.update(train_naru(seed, dataset, 'original', workload, params, sizelimit, result_dict=result_dict, GPU_id = "2"))
+                    # infomation_dict = {"seed":seed,"order":order_name,"error":{workload: metrics},
+                        #    "model_name":f"{table.version}-{model.name()}_warm{args.warmups}-{seed}"}
+                mean_error_list.append(result_dict["error"][workload]['mean'])
+                th95_error_list.append(result_dict["error"][workload]['95th'])
+                if os.path.isdir(f"myresult/{dataset}/{workload}")== False:
+                    os.makedirs(f"myresult/{dataset}/{workload}")
+                with open(f"myresult/{dataset}/{workload}/my_dict_train_order_{final_col}.json", "a+") as f:
+                    json.dump(result_dict, f)
+                    f.write('\n')
+                end_time = time()
+                use_time = (end_time - start_time)/60
+                all_time += use_time
+                L.info(f"the train use {use_time} min")
+                L.info(f"the all time {all_time} min")
+            
+    elif args["analyze"]:
+        print("hello")
         dataset = args["--dataset"]
-        params = literal_eval(args["--params"])
-        report_errors(dataset, params['file'])
-        exit(0)
+        workload = args["--workload"]
+        target_type = args["--type"]
+        # poetry run python -m lecarb analyze --dataset census6 --workload basenormal --type train_order
+        
+        with open(f"myresult/{dataset}/{workload}/my_dict_{target_type}.json", "r") as f:
+            result_dict_list = json.load(f)
+        length = len(result_dict_list)
+        for res_dict in result_dict_list:
+            print(res_dict['error'][workload])
+
+            
+    # if 
+
     
-    if args["report-dynamic"]:
-        dataset = args["--dataset"]
-        params = literal_eval(args["--params"])
-        report_dynamic_errors(dataset, params['old_new_file'], params['new_new_file'], params['T'], params['update_time'])
-        exit(0)
-
-    if args["update-train"]:
-        dataset = args["--dataset"]
-        version = args["--dataset-version"]
-        workload = args["--workload"]
-        params = literal_eval(args["--params"])
-        overwrite = args["--overwrite"]
-
-        if args["--estimator"] == "naru":
-            update_naru(seed, dataset, version, workload, params, overwrite)
-        elif args["--estimator"] == "deepdb":
-            update_deepdb(seed, dataset, version, workload, params, overwrite)
-        else:
-            raise NotImplementedError
-        exit(0)
