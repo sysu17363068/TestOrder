@@ -24,4 +24,4 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 NUM_THREADS = int(os.environ.get("CPU_NUM_THREADS", os.cpu_count()))
 
 VALID_NUM_DATA_DRIVEN = 100
-CHANGE_ORDER_TABLE = False
+CHANGE_ORDER_TABLE = True

@@ -41,10 +41,41 @@ def qerror(est_card, card):
 def rmserror(preds, labels, total_rows):
     return np.sqrt(np.mean(np.square(preds/total_rows-labels/total_rows)))
 
-def evaluate(preds, labels, total_rows=-1):
+def evaluate(preds, labels, queries,cols_name_list, total_rows=-1):
+    filter_colunm_count = dict([(x,0) for x in cols_name_list])
+    filter_colunm_sum = dict([(x,0) for x in cols_name_list])
     errors = []
+    error_card_list_qjy = [0,0,0,0,0,0,0,0,0] #10%
+    max_difference = 0
+    max_q_error = 0
     for i in range(len(preds)):
-        errors.append(qerror(float(preds[i]), float(labels[i])))
+        error = qerror(float(preds[i]), float(labels[i]))
+        q = queries[i]
+        errors.append(error)
+        # print(error)
+        for j in range(len(error_card_list_qjy)):
+            if error > (j+1)*0.1 + 1:
+                error_card_list_qjy[j] = max(error_card_list_qjy[j],labels[i])
+        if abs(preds[i]-labels[i]) > max_difference:
+                max_difference = abs(preds[i]-labels[i])
+                max_error_cardinality = labels[i]
+                # max_error_selectilty = label.selectivity
+                max_q_error = error
+
+                for k,filter in enumerate(q.predicates):
+                    print(filter)
+                    print(q.predicates[filter])
+                    if q.predicates[filter]!=None:
+                        colname = cols_name_list[k]
+                        filter_colunm_count[colname]+=1
+                        filter_colunm_sum[colname]+=labels[i]*error
+        filter_colunm_avg = {}
+    
+    for i in cols_name_list:
+        filter_colunm_avg[i] = filter_colunm_sum[i]/filter_colunm_count[i] if filter_colunm_count[i]>0 else 0
+    filter_colunm_sum = dict(sorted(filter_colunm_sum.items(),key=lambda item: item[1], reverse=True))
+    filter_colunm_count = dict(sorted(filter_colunm_count.items(),key=lambda item: item[1], reverse=True))
+    filter_colunm_avg = dict(sorted(filter_colunm_avg.items(),key=lambda item: item[1], reverse=True))
 
     metrics = {
         'max': round(np.max(errors),4),
@@ -53,7 +84,21 @@ def evaluate(preds, labels, total_rows=-1):
         '90th': round(np.percentile(errors, 90),4),
         'median': round(np.median(errors),4),
         'mean': round(np.mean(errors),4),
-        'gmean': round(gmean(errors),4)
+        'gmean': round(gmean(errors),4),
+        '10%': float(error_card_list_qjy[0]),
+        '20%': float(error_card_list_qjy[1]),
+        '30%': float(error_card_list_qjy[2]),
+        '40%': float(error_card_list_qjy[3]),
+        '50%': float(error_card_list_qjy[4]),
+        '60%': float(error_card_list_qjy[5]),
+        '70%': float(error_card_list_qjy[6]),
+        '80%': float(error_card_list_qjy[7]),
+        '90%': float(error_card_list_qjy[8]),
+        'max_error_cardinality' : float(max_error_cardinality),
+        'max_q_error':round(max_q_error,4),
+        "filter_colunm_sum":filter_colunm_sum,
+        "filter_colunm_count":filter_colunm_count,
+        "filter_colunm_avg":filter_colunm_avg
     }
 
     if total_rows > 0:

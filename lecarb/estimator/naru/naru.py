@@ -325,6 +325,7 @@ def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict,
             # change order 
     if CHANGE_ORDER_TABLE:
         L.warning("<<<<<<<<<< use the data order >>>>>>>>>>>")
+        order_save = fixed_ordering
         table.change_table_order(fixed_ordering)
         valid_queries = new_order_QueryList(valid_queries,new_order=fixed_ordering)
         fixed_ordering = None
@@ -375,6 +376,7 @@ def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict,
         df.groupby(list(df.columns)).size(), [2])[0]
 
     train_start = time.time()
+    epoch_loss_dict = {}
     for epoch in range(args.epochs):
         mean_epoch_train_loss = RunEpoch(
             args,
@@ -389,9 +391,11 @@ def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict,
             table_bits=table_bits)
 
         dur_min = (time.time() - train_start) / 60
+        if epoch == 0 or epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40 or epoch==50:
+            epoch_loss_dict[epoch]=mean_epoch_train_loss
         if epoch%20 == 0:
             L.info(f'epoch {epoch+1} train loss {mean_epoch_train_loss:.4f} nats / {mean_epoch_train_loss/np.log(2):.4f} bits, time since start: {dur_min:.1f} mins')
-
+            
     dur_min = (time.time() - train_start) / 60
     L.info('Training finished! Time spent since start: {:.1f} mins'.format(dur_min))
 
@@ -419,11 +423,13 @@ def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict,
                      device=DEVICE,
                      shortcircuit=args.column_masking)
     preds = []
+    cols_name_list = list(table.columns.keys())
     for q in valid_queries:
         est_card, _ = estimator.query(q)
         preds.append(est_card)
-    _, metrics = evaluate(preds, [l.cardinality for l in labels])
+    _, metrics = evaluate(preds, [l.cardinality for l in labels],queries = valid_queries,cols_name_list=cols_name_list)
 
+    
     state = {
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': opt.state_dict(),
@@ -446,7 +452,9 @@ def train_naru(seed, dataset, version, workload, params, sizelimit, result_dict,
     #     result_dict[key] = metrics
     L.info(f"{metrics}")
     infomation_dict = {"seed":seed,"order":order_name,"error":{workload: metrics},
-                       "model_name":f"{table.version}-{model.name()}_warm{args.warmups}-{seed}"}
+                       "model_name":f"{table.version}-{model.name()}_warm{args.warmups}_{seed}","loss":epoch_loss_dict}
+    if CHANGE_ORDER_TABLE:
+        infomation_dict['model_name'] = f"{table.version}-{model.name()}_warm{args.warmups}_{seed}_{','.join(map(str,order_save))}"
     return infomation_dict
     # model_path = MODEL_ROOT / table.dataset
     # model_path.mkdir(parents=True, exist_ok=True)
